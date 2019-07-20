@@ -1,0 +1,665 @@
+Red Wine Quality by Abhishek Patria
+========================================================
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, warning=FALSE, packages}
+
+library(ggplot2)
+library(dplyr)
+library(GGally)
+library(tidyr)
+library(gridExtra)
+
+```
+
+```{r global_options, include=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+```
+
+
+```{r echo=FALSE, warning=FALSE, Load_the_Data}
+
+#setwd("'''Your working directory path goes here.'''")
+
+df <- read.csv("wineQualityReds.csv")
+
+```
+
+# Description
+>In the given project, I will explore the data set on red wines' quality. The 
+primary motive is to explore the influence of chemical properties on the quality
+of red wines. This data set contains 1,599 red wines with 11 variables. The data
+set is available  [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityReds.csv) and information about the data set is available [here](https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt).
+
+
+# Dataset Quick-Summary
+
+#### Dataset dimentions:
+
+```{r echo=FALSE,warning=FALSE, Dimentions}
+dim(df)
+```
+
+#### Dataset structure:
+```{r echo=FALSE, warning=FALSE, Structure}
+str(df)
+```
+
+
+#### Dataset summary:
+```{r echo=FALSE, warning=FALSE, Summary}
+summary(df)
+```
+>If we see the quality variable, it is an integer variable with a range of 
+[3,8] having a median quality of 6 with the average of 5.636 which might imply a
+slightly left skewed distribution.
+
+
+```{r echo=FALSE, warning=FALSE, Quality}
+
+ggplot(df,aes(as.factor(quality))) + 
+  geom_bar() + xlab("Quality") + ylab("Count") 
+
+```
+
+>We can see from the barplot that the distribution is almost symmetrical 
+about its mean value of 5.636 and a slight left skewness.
+
+
+# Pairwise Matrix
+
+```{r echo=FALSE, warning=FALSE, Pairwise}
+
+ggpairs(data = df, 
+  lower = list(
+    continuous = wrap("smooth_loess",alpha = 0.1, color = "red", size=0.5) 
+    ),
+  upper = list(continuous = wrap(ggally_cor, size = 2, color = "black"))
+  ) +
+theme(
+    axis.text = element_text(size = 6),
+    axis.title = element_text(size = 6),
+    legend.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(colour = NA),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "grey95")
+    
+)
+
+```
+
+# Univariate Plots
+
+#### Alcohol Content
+
+```{r echo=FALSE, warning=FALSE, uni_functions}
+
+uni_function <- function(x, xlab){
+  
+  ggplot(df,aes(x)) + 
+    geom_histogram(aes(fill=..count..)) + xlab(xlab) + ylab("Count") +
+    scale_fill_gradient(low="pink", high="dark red")
+
+  }
+
+uni_function_log10 <- function(x, xlab){
+  
+  ggplot(df,aes(x)) + 
+    geom_histogram(aes(fill=..count..)) + xlab(paste(xlab, " : log10", sep="")) + ylab("Count") +
+    scale_fill_gradient(low="pink", high="dark red") + scale_x_log10()
+
+  }
+
+uni_function_sqrt <- function(x, xlab){
+  
+  ggplot(df,aes(x)) + 
+    geom_histogram(aes(fill=..count..)) + xlab(paste(xlab, " : sqrt", sep="")) + ylab("Count") +
+    scale_fill_gradient(low="pink", high="dark red") + scale_x_sqrt()
+
+  }
+
+```
+
+
+```{r echo=FALSE, warning=FALSE, Alcohol_Content}
+
+p1 <- uni_function(df$alcohol, "Alcohol")
+p2 <- uni_function_log10(df$alcohol, "Alcohol")
+p3 <- uni_function_sqrt(df$alcohol, "Alcohol")
+
+grid.arrange(p1, p2, p3, ncol=2)
+
+```
+
+>Being a tailed distribution, plotting the alcohol content with a log and sqrt 
+scale does not help us understanding it.
+
+#### Residual Sugar
+
+```{r echo=FALSE, warning=FALSE, Residual_Sugar}
+
+p1 <- uni_function(df$residual.sugar, "Residual Sugar")
+p2 <- uni_function_log10(df$residual.sugar, "Residual Sugar")
+p3 <- uni_function_sqrt(df$residual.sugar, "Residual Sugar")
+
+grid.arrange(p1, p2, p3, ncol=2)
+
+```
+
+>Residual Sugar is the content that provides with sweet after taste after you
+take a wine sip. Also, it is an indicator of the quality of fermentation process.
+Low residual sugar may mean better fermentation process and thus higher alcohol
+content. It would be interesting to take a look at this in bivariate analysis.
+
+
+#### Free sulphur, Total sulfur, Bound sulfur
+
+>I have created a new variable "Bound sulfurdioxide" which is Total sulfurdioxide
+less the free sulfur dioxide, as the free sulfurdioxide has a lot of dispersed
+distribution.
+
+```{r echo=FALSE, warning=FALSE, sulfur}
+
+
+p1 <- uni_function(df$free.sulfur.dioxide, "Free sulfurdioxide")
+p2 <- uni_function(df$total.sulfur.dioxide, "Total sulfurdioxide")
+p3 <- uni_function((df$total.sulfur.dioxide - df$free.sulfur.dioxide) , "Bound sulfurdioxide")
+  
+grid.arrange(p1,p2,p3, ncol=2)
+
+
+```
+
+>When plotting on log scale the curve starts acting normally distributed
+ 
+```{r echo=FALSE, warning=FALSE, sulfur_log}
+
+p1 <- uni_function_log10(df$free.sulfur.dioxide, "Free sulfurdioxide : log10")
+p2 <- uni_function_log10(df$total.sulfur.dioxide, "Total sulfurdioxide : log10")
+p3 <- uni_function_log10((df$total.sulfur.dioxide - df$free.sulfur.dioxide) , "Bound sulfurdioxide : log10")
+ 
+grid.arrange(p1,p2,p3, ncol=2)
+
+df$bound.sulfur.dioxide <-  with(df, total.sulfur.dioxide - free.sulfur.dioxide)
+
+```
+
+#### Sulphates
+```{r echo=FALSE, warning=FALSE, sulphates}
+
+
+p1 <- uni_function(df$sulphates, "Sulphates")
+p2 <- uni_function_log10(df$sulphates, "Sulphates")
+p3 <- uni_function_sqrt(df$sulphates, "Sulphates")
+
+grid.arrange(p1,p2,p3, ncol=2)
+
+
+```
+
+>We see that after applying log scale the distribution tends to be normal but a
+lot of outliers still remain.
+
+
+#### Citric acid
+```{r echo=FALSE, warning=FALSE, citric_acid}
+
+
+p1 <- uni_function(df$citric.acid, "Citric Acid")
+p2 <- uni_function_log10(df$citric.acid, "Citric Acid")
+p3 <- uni_function_sqrt(df$citric.acid, "Citric Acid")
+
+grid.arrange(p1,p2,p3, ncol=2)
+
+
+```
+
+>We see that plotting citric acid on log scale flips the curve on normal scale,
+while plotting it on sqrt scale starts giving it normal featrue but with a couple
+of extreme outliers.
+
+#### Fixed acidity, Volatile acidity, Total acidity
+
+>I have created a new variable "Bound sulfurdioxide" which is Total sulfurdioxide
+less the free sulfur dioxide, as the free sulfurdioxide has a lot of dispersed
+distribution.
+
+```{r echo=FALSE, warning=FALSE, acidity}
+
+
+p1 <- uni_function(df$fixed.acidity, "Fixed Acidity : log10")
+p2 <- uni_function(df$volatile.acidity, "Volatile Acidity : log10")
+p3 <- uni_function((df$fixed.acidity + df$volatile.acidity) , "Total Acidity : log10")
+  
+grid.arrange(p1,p2,p3, ncol=2)
+
+df$total.acidity <-  with(df, fixed.acidity + volatile.acidity)
+
+```
+
+>When plotting on log scale the curve starts acting normally distributed
+ 
+```{r echo=FALSE, warning=FALSE, acidity_log}
+
+p1 <- uni_function(df$fixed.acidity, "Fixed Acidity")
+p2 <- uni_function(df$volatile.acidity, "Volatile Acidity")
+p3 <- uni_function((df$fixed.acidity + df$volatile.acidity) , "Total Acidity")
+
+grid.arrange(p1,p2,p3, ncol=2)
+
+```
+
+#### Density
+
+```{r echo=FALSE, warning=FALSE, Density}
+
+p1 <- uni_function(df$density, "Density")
+p2 <- uni_function_log10(df$density, "Density")
+p3 <- uni_function_sqrt(df$density, "Density")
+
+grid.arrange(p1,p2,p3, ncol=2)
+
+```
+
+
+
+# Univariate Analysis
+
+### Dataset structure:
+
+* We can see that the dataset has 13 variables with 1599 observations
+* All the data is of numbers type with integer and numeric being the subtypes
+* The variable "x" acts as a unique ID for each row of the data
+
+### Points of interest: 
+1. pH and density are almost normally distributed
+2. Most wines have an alcohol content of less than 11%
+3. Residual sugar, chlorides have extreme outliers
+4. Sulfur dioxide seems to have normal distribution on a log scale
+
+
+### Main feature of interest:
+It is to see how the quality is being affected by changes in other variables
+
+### Other features in the dataset that will help support my investigation:
+I think that Residual sugar, alcohol, sufur, acidity and pH will be the main
+features that will affect the wine taste. Density may also contribute to the 
+smoothness of the wine.
+
+
+### New variables created
+
+I have created two new variables as follows:-
+
+1. Bound sulfurdioxide = Total sulfurdioxide - Free sulfurdioxide
+2. Total acidity = Fixed acidity + Volatile acidity
+
+Though, I was not able to derive insights from their univariate analysis.
+
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+
+I had a feeling that most of the data would be normally distributed but then 
+analyzing the variables came as a shocker. This provided a sense how data is in
+real life.
+
+The data had extreme outliers in the case of residual sugar, chlorides, sulphates.
+This might represent a case of product differentiation among the wines tested.
+
+
+# Bivariate Plots Section
+
+
+```{r echo=FALSE, warning=FALSE, Bivariate_Plots}
+
+corr_mat_data <- subset(df, select=-c(1))
+
+ggcorr(corr_mat_data, nbreaks = 8, low="dark red", high="dark red", label=TRUE, 
+       label_size = 3, size = 2, label_round = 2)
+
+```
+
+>From the correlation matrix we can see that quality has the strongest relation
+with alcohol, volatile acidity, sulphates and citric acid with the values being 
+0.5, -0.4, 0.3, and -0.2 respectively: while correlation value of 0 with residual
+sugar implies that residual sugar does not contribute to quality.
+
+
+###Let us first plot quality against various variables
+
+```{r echo=FALSE, warning=FALSE, bi_function}
+
+bi_function <- function(x,y,ylab){
+  
+  ggplot(aes(x=factor(x), y=y), data = df) +
+  geom_boxplot( alpha = .3,color = 'dark green') +
+  geom_point(alpha = .2, position = "jitter", col="dark red") +
+  stat_summary(fun.y = "median", geom = "point", color = "purple", shape = 18, size = 3) +
+  geom_smooth(aes(quality-2,y ), method = "lm", se = FALSE, size=1, color = 'black')+
+  xlab("Quality") + ylab(ylab)
+  
+}
+
+```
+
+
+>Alcohol vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_alcohol}
+
+bi_function(df$quality,df$alcohol,"Alcohol")
+cor.test(df$alcohol, df$quality)
+
+```
+
+
+>Volatile Acidity vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_volatileacidity}
+
+bi_function(df$quality,df$volatile.acidity,"Volatile Acidity")
+cor.test(df$volatile.acidity, df$quality)
+
+```
+
+
+>Sulphates vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_sulphates}
+
+bi_function(df$quality,df$sulphates,"Sulphates")
+cor.test(df$sulphates, df$quality)
+
+```
+
+
+>Citric Acid vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_citricacid}
+
+bi_function(df$quality,df$citric.acid,"Citric Acid")
+cor.test(df$citric.acid, df$quality)
+
+```
+
+
+>Total Sulfhur Dixoide vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_totalsulfur_dioxide}
+
+bi_function(df$quality,df$total.sulfur.dioxide,"Total Sulfur Dioxide")
+cor.test(df$total.sulfur.dioxide, df$quality)
+
+```
+
+
+>pH vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_pH}
+
+bi_function(df$quality,df$pH,"pH")
+cor.test(df$pH, df$quality)
+
+```
+
+
+>Density vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_density}
+
+bi_function(df$quality,df$density,"Density")
+cor.test(df$density, df$quality)
+
+```
+
+
+>Free Sulfur Dioxide vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_freesulfurdioxide}
+
+bi_function(df$quality,df$free.sulfur.dioxide,"Free Sulfur Dioxide")
+cor.test(df$free.sulfur.dioxide, df$quality)
+
+```
+
+
+>Chlorides vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_chlorides}
+
+bi_function(df$quality,df$chlorides,"Chlorides")
+cor.test(df$chlorides, df$quality)
+
+```
+
+
+>Residual Sugar vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_residualsugar}
+
+bi_function(df$quality,df$residual.sugar,"Residual Sugar")
+cor.test(df$residual.sugar, df$quality)
+
+```
+
+
+>Fixed Acidity vs Quality
+
+```{r echo=FALSE, warning=FALSE, bi_fixedacidity}
+
+bi_function(df$quality,df$fixed.acidity,"Fixed Acidity")
+cor.test(df$fixed.acidity, df$quality)
+
+```
+
+
+>Now let us try to plot fixed acidity with quality and density on a log scale 
+as we see from the correlation matrix that they have a strong correlation
+number.
+
+
+>Fixed Acidity vs Density
+
+```{r echo=FALSE, warning=FALSE, bi_fixedacidity_density}
+
+ggplot(df, aes(x=fixed.acidity, y=density)) +
+  geom_smooth(method="loess", col="dark green") +
+  geom_point(alpha = 0.2 , position = "jitter" , col = "dark red") +
+  xlab("Density") + ylab("Fixed Acidity") + scale_x_log10()
+
+
+cor.test(df$density, log(df$fixed.acidity))
+
+```
+
+
+>Fixed Acidity vs pH
+
+```{r echo=FALSE, warning=FALSE, bi_fixedacidity_pH}
+
+ggplot(df, aes(x=fixed.acidity, y=pH)) +
+  geom_smooth(method="loess", col="dark green") +
+  geom_point(alpha = 0.2 , position = "jitter" , col = "dark red") +
+  xlab("pH") + ylab("Fixed Acidity") + scale_x_log10()
+
+
+cor.test(df$pH, log(df$fixed.acidity))
+
+```
+
+>The smoothened curve can be taken as a near straight line.
+
+
+# Bivariate Analysis
+
+
+### Quality against other variables
+>I was not able to find a strong correlation between quality and other variables.
+But if seen as best amongst bad, alcohol, volatile acidity, sulphates and citric
+acid are the variables that may be used in developing a linear model to predict 
+quality.
+
+>Another thing to notice among the four selected variables, only volatile acidity 
+is negatively correlated. Also, no satisfactory dependence could be drawn from
+the t-tests conducted on various pairs of variables with quality.
+
+
+
+### Relationships between variables which are not the main feature of interest
+>On analysing fixed acidity with the log scale plots  of density and pH 
+respectively, I found a strong correlation of fixed density with the other two. 
+This can be supported from the line graph plotted and the confidence
+interval band around it.
+
+
+### What was the strongest relationship you found?
+>With respect to quality, alcohol had the strongest relationship while if we say
+about fixed acidity then log(density) had the strongest one.
+
+
+
+# Multivariate Plots Section
+
+
+```{r echo=FALSE, warning=FALSE, scatter_breakup}
+
+scatter_breakup <- function(x, xlab, y, ylab, breakup, breakup_lab) {
+  ggplot(data=df, aes(x=x, y=y, color=factor(breakup)) ) +
+   geom_jitter(size=1) +
+   geom_smooth(method = "lm", se=FALSE, size = 0.5) +
+   scale_color_brewer(type='qual', guide=guide_legend(title=breakup_lab),
+                         palette = 'Reds') +
+   xlab(xlab) + ylab(ylab)
+}
+
+
+```
+
+
+>I have plotted fixed acidity against density and pH with quality breakup as 
+these combinations have the strongest correlation in the correlation matrix.
+
+```{r echo=FALSE, warning=FALSE, fixed_acidity_vs_density}  
+
+scatter_breakup(df$fixed.acidity,"Fixed Acidity  (gm/dm^3)", 
+                df$density,"Density  (gm/dm^3)", 
+                df$quality, "Quality")
+
+```
+
+
+```{r echo=FALSE, warning=FALSE, fixed_acidity_vs_pH}
+
+scatter_breakup(df$fixed.acidity,"Fixed Acidity  (gm/dm^3)", df$pH,"pH", 
+                df$quality, "Quality")
+
+```
+
+>With alcohol and volatile acidity being strongly correlated with the quality of
+the red wine, it is a must to explore the dependence of these two with their 
+respective strongest correlations. As a result I have plotted density vs alcohol
+and citric acid vs volatility.
+
+```{r echo=FALSE, warning=FALSE, density_vs_alcohol}
+
+scatter_breakup(df$density,"Density  (gm/dm^3)", df$alcohol,"Alcohol (% volume)", 
+                df$quality, "Quality")
+
+```
+
+
+```{r echo=FALSE, warning=FALSE, citric_acid_vs_volatile_acidity}
+
+scatter_breakup(df$citric.acid,"Citric Acid  (gm/dm^3)", 
+                df$volatile.acidity,"Volatile Acidity", 
+                df$quality, "Quality")
+
+```
+
+# Multivariate Analysis
+
+### Relationships observed:
+Density and fixed acidity go hand in hand and they are apparently converging
+at higher units.
+
+There is a clear cut interdependence of alcohol on density. For a given alcohol
+level, higher density means higher quality.
+
+### Surprising interactions between features:
+
+Though there is a strong correlation between pH and fixed acidity, this does not
+reveal any individual insight about the quality as around an acidity of 6.5 the
+trend changes for quality.
+
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, warning=FALSE, Plot_Three}
+
+ggplot(df,aes(as.factor(quality))) + 
+  geom_bar() + xlab("Quality") + ylab("Count") +
+  ggtitle("Distribution of Quality")
+summary(df$quality)
+
+```
+
+### Description One
+Wines with quality 5-6 make up most of the space i.e. they are mainstream, while
+high or low quality wines have a very small ratio: this in combination provides 
+us with the apparently normal distribution of quality of wines.
+
+
+### Plot Two
+```{r echo=FALSE, warning=FALSE, Plot_One}
+
+bi_function(df$quality,df$alcohol,"Alcohol (% volume)") + ggtitle("Alcohol vs Quality")
+
+```
+
+### Description Two
+Alcohol has the strongest correlation with the quality when compared to other
+variables, it is better to see its pattern with varying quality. From the above 
+plot, it can be seen that higher % of alcohol yields better wine.
+
+### Plot Three
+```{r echo=FALSE, warning=FALSE, Plot_Two}
+
+p1 <- bi_function(df$quality,df$fixed.acidity,"Fixed Acidity (gm/dm^3)") +
+      ggtitle("Fixed Acidity vs Quality")
+p2 <- bi_function(df$quality,df$volatile.acidity,"Volatile Acidity (gm/dm^3)") +
+      ggtitle("Volatile Acidity vs Quality")
+p3 <- bi_function(df$quality,df$total.acidity,"Total Acidity (gm/dm^3)") +
+      ggtitle("Total Acidity vs Quality")
+p4 <- bi_function(df$quality,df$citric.acid,"Citric Acid (gm/dm^3)") +
+      ggtitle("Citric Acid vs Quality")
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+```
+
+### Description Three
+Volatile acid has a strong negative correlation with wine quality fixed acidity, 
+total acidity and citric acid has a positive relationship with wine quality. 
+
+
+
+------
+
+# Reflection
+
+
+While the dataset is small in size, it has a lot of variables to explore. The 
+analysis performed above is purely statistical and does not include the domain 
+knowledge of wine tasting. The dependence of quality can be mainly explained by
+alcohol, acid and sulphates.
+
+Also, correlation does not equate to causation. Moreover, domain knowledge is of
+utmost importance to clean, understand, generate new insights and inferences 
+from the data.
